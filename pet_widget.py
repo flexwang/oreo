@@ -64,6 +64,7 @@ class PetWidget(QWidget):
             | Qt.WindowType.Tool
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_MacAlwaysShowToolWindow)
         self.setFixedSize(PET_SIZE, PET_SIZE)
 
         screen = QApplication.primaryScreen().geometry()
@@ -255,6 +256,11 @@ class PetWidget(QWidget):
         self.heart_timer = 25
         if self.stretch_sound is not None:
             self.stretch_sound.play()
+
+    def changeEvent(self, event):
+        if event.type() == event.Type.ActivationChange and not self.isActiveWindow():
+            QTimer.singleShot(0, self.raise_)
+        super().changeEvent(event)
 
     def _show_context_menu(self, pos):
         menu = QMenu(self)
