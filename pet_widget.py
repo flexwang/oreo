@@ -34,8 +34,9 @@ def _pil_to_qpixmap(img):
 
 
 class PetWidget(QWidget):
-    def __init__(self):
+    def __init__(self, sound_enabled=False):
         super().__init__()
+        self.sound_enabled = sound_enabled
         self._setup_window()
         self._load_frames()
         self._load_sounds()
@@ -106,9 +107,12 @@ class PetWidget(QWidget):
             self.stretch_seq.append(pixmap)
 
     def _load_sounds(self):
+        if not self.sound_enabled:
+            self.stretch_sound = None
+            return
         self.stretch_sound = QSoundEffect(self)
         self.stretch_sound.setSource(QUrl.fromLocalFile(STRETCH_SOUND_PATH))
-        self.stretch_sound.setVolume(0.02)
+        self.stretch_sound.setVolume(0.01)
 
     def _setup_behavior(self):
         self.behavior = FloatingBehavior(self.screen_width, self.screen_height, PET_SIZE)
@@ -249,7 +253,8 @@ class PetWidget(QWidget):
         self.stretch_frame_counter = 0
         self.show_heart = True
         self.heart_timer = 25
-        self.stretch_sound.play()
+        if self.stretch_sound is not None:
+            self.stretch_sound.play()
 
     def _show_context_menu(self, pos):
         menu = QMenu(self)
