@@ -1,0 +1,4 @@
+PyQt6>=6.5
+Pillow>=9.0
+numpy>=1.20
+rembg[cpu]>=2.0
