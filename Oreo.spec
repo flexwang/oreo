@@ -5,7 +5,7 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('assets', 'assets'), ('frames/walking3', 'frames/walking3'), ('frames/walking-to-stretching', 'frames/walking-to-stretching'), ('frames/stretching', 'frames/stretching')],
+    datas=[('frames/walking3', 'frames/walking3'), ('frames/walking-to-stretching', 'frames/walking-to-stretching'), ('frames/stretching', 'frames/stretching'), ('audio', 'audio')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

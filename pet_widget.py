@@ -3,20 +3,23 @@
 import os
 import sys
 from PIL import Image
-from PyQt6.QtCore import Qt, QTimer, QPoint, QRectF
+from PyQt6.QtCore import Qt, QTimer, QPoint, QRectF, QUrl
 from PyQt6.QtGui import QPixmap, QPainter, QIcon, QAction, QCursor, QColor, QPen, QFont, QImage, QTransform
+from PyQt6.QtMultimedia import QSoundEffect
 from PyQt6.QtWidgets import QWidget, QMenu, QSystemTrayIcon, QApplication
 
 from behaviors import FloatingBehavior, State
 
 if getattr(sys, "_MEIPASS", None):
-    FRAMES_DIR = os.path.join(sys._MEIPASS, "frames")
+    RESOURCE_DIR = sys._MEIPASS
 else:
-    FRAMES_DIR = os.path.join(os.path.dirname(__file__), "frames")
+    RESOURCE_DIR = os.path.dirname(__file__)
 
+FRAMES_DIR = os.path.join(RESOURCE_DIR, "frames")
 FRAMES_WALK_DIR = os.path.join(FRAMES_DIR, "walking3")
 FRAMES_TRANSITION_DIR = os.path.join(FRAMES_DIR, "walking-to-stretching")
 FRAMES_STRETCH_DIR = os.path.join(FRAMES_DIR, "stretching")
+STRETCH_SOUND_PATH = os.path.join(RESOURCE_DIR, "audio", "stretch.wav")
 
 PET_SIZE = 150
 WALK_ANIM_SPEED = 8
@@ -35,6 +38,7 @@ class PetWidget(QWidget):
         super().__init__()
         self._setup_window()
         self._load_frames()
+        self._load_sounds()
         self._setup_behavior()
         self._setup_animation()
         self._setup_tray()
@@ -100,6 +104,11 @@ class PetWidget(QWidget):
             pixmap = _pil_to_qpixmap(img)
             pixmap.setDevicePixelRatio(dpr)
             self.stretch_seq.append(pixmap)
+
+    def _load_sounds(self):
+        self.stretch_sound = QSoundEffect(self)
+        self.stretch_sound.setSource(QUrl.fromLocalFile(STRETCH_SOUND_PATH))
+        self.stretch_sound.setVolume(0.02)
 
     def _setup_behavior(self):
         self.behavior = FloatingBehavior(self.screen_width, self.screen_height, PET_SIZE)
@@ -240,6 +249,7 @@ class PetWidget(QWidget):
         self.stretch_frame_counter = 0
         self.show_heart = True
         self.heart_timer = 25
+        self.stretch_sound.play()
 
     def _show_context_menu(self, pos):
         menu = QMenu(self)
