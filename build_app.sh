@@ -11,6 +11,7 @@ pyinstaller \
     --icon icon.png \
     --add-data "assets:assets" \
     --add-data "frames/walking3:frames/walking3" \
+    --add-data "frames/walking-to-stretching:frames/walking-to-stretching" \
     --add-data "frames/stretching:frames/stretching" \
     --noconfirm \
     --clean \

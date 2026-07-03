@@ -2,9 +2,8 @@
 
 import os
 import sys
-import math
 from PIL import Image
-from PyQt6.QtCore import Qt, QTimer, QPoint, QRectF, QRect
+from PyQt6.QtCore import Qt, QTimer, QPoint, QRectF
 from PyQt6.QtGui import QPixmap, QPainter, QIcon, QAction, QCursor, QColor, QPen, QFont, QImage, QTransform
 from PyQt6.QtWidgets import QWidget, QMenu, QSystemTrayIcon, QApplication
 
@@ -16,13 +15,12 @@ else:
     FRAMES_DIR = os.path.join(os.path.dirname(__file__), "frames")
 
 FRAMES_WALK_DIR = os.path.join(FRAMES_DIR, "walking3")
+FRAMES_TRANSITION_DIR = os.path.join(FRAMES_DIR, "walking-to-stretching")
 FRAMES_STRETCH_DIR = os.path.join(FRAMES_DIR, "stretching")
-WALK_FRAMES_SEQ = [1, 2, 3, 4]
-STRETCH_FRAMES_SEQ = [1, 2, 3, 4]
 
 PET_SIZE = 150
 WALK_ANIM_SPEED = 8
-STRETCH_ANIM_SPEED = 12
+STRETCH_ANIM_SPEED = 4
 
 
 def _pil_to_qpixmap(img):
@@ -51,6 +49,8 @@ class PetWidget(QWidget):
         self.stretch_frame_index = 0
         self.stretch_frame_counter = 0
         self._flipped_cache = {}
+        self.show_heart = False
+        self.heart_timer = 0
 
     def _setup_window(self):
         self.setWindowFlags(
@@ -70,30 +70,39 @@ class PetWidget(QWidget):
         self.move(start_x, start_y)
 
     def _load_frames(self):
-        """Load walking and stretching frames at Retina resolution."""
+        """Load walking, transition, and stretching frames at Retina resolution."""
         dpr = QApplication.primaryScreen().devicePixelRatio()
         load_size = int(PET_SIZE * dpr)
+
         self.walk_frames = []
-        for i in WALK_FRAMES_SEQ:
+        for i in [1, 2, 3, 4]:
             path = os.path.join(FRAMES_WALK_DIR, f"frame_{i}.png")
             img = Image.open(path).convert("RGBA")
             img.thumbnail((load_size, load_size), Image.LANCZOS)
             pixmap = _pil_to_qpixmap(img)
             pixmap.setDevicePixelRatio(dpr)
             self.walk_frames.append(pixmap)
-        self.stretch_frames = []
-        for i in STRETCH_FRAMES_SEQ:
-            path = os.path.join(FRAMES_STRETCH_DIR, f"frame_{i}.png")
+
+        # Stretch sequence: transition frame 2, 3 then stretch frame 1, 2
+        padded_size = int(load_size * 0.85)
+        self.stretch_seq = []
+        for i in [2, 3]:
+            path = os.path.join(FRAMES_TRANSITION_DIR, f"frame_{i}.png")
             img = Image.open(path).convert("RGBA")
-            img.thumbnail((load_size, load_size), Image.LANCZOS)
+            img.thumbnail((padded_size, padded_size), Image.LANCZOS)
             pixmap = _pil_to_qpixmap(img)
             pixmap.setDevicePixelRatio(dpr)
-            self.stretch_frames.append(pixmap)
+            self.stretch_seq.append(pixmap)
+        for i in [1, 2, 2, 2]:
+            path = os.path.join(FRAMES_STRETCH_DIR, f"frame_{i}.png")
+            img = Image.open(path).convert("RGBA")
+            img.thumbnail((padded_size, padded_size), Image.LANCZOS)
+            pixmap = _pil_to_qpixmap(img)
+            pixmap.setDevicePixelRatio(dpr)
+            self.stretch_seq.append(pixmap)
 
     def _setup_behavior(self):
         self.behavior = FloatingBehavior(self.screen_width, self.screen_height, PET_SIZE)
-        self.show_heart = False
-        self.heart_timer = 0
 
     def _setup_animation(self):
         self.timer = QTimer(self)
@@ -101,7 +110,7 @@ class PetWidget(QWidget):
         self.timer.start(50)
 
     def _setup_tray(self):
-        icon = QIcon(self._frame_as_pixmap(0))
+        icon = QIcon(self.walk_frames[0])
 
         self.tray = QSystemTrayIcon(icon, self)
         self.tray.setToolTip("Oreo")
@@ -118,9 +127,6 @@ class PetWidget(QWidget):
         self.tray.setContextMenu(tray_menu)
         self.tray.activated.connect(self._tray_activated)
         self.tray.show()
-
-    def _frame_as_pixmap(self, index):
-        return self.walk_frames[index % len(self.walk_frames)]
 
     def _show_pet(self):
         self.show()
@@ -143,7 +149,6 @@ class PetWidget(QWidget):
 
         self.move(int(self.float_x), int(self.float_y))
 
-        # Animate based on state
         if self.behavior.state == State.WALK:
             self.walk_frame_counter += 1
             if self.walk_frame_counter >= WALK_ANIM_SPEED:
@@ -153,7 +158,10 @@ class PetWidget(QWidget):
             self.stretch_frame_counter += 1
             if self.stretch_frame_counter >= STRETCH_ANIM_SPEED:
                 self.stretch_frame_counter = 0
-                self.stretch_frame_index = (self.stretch_frame_index + 1) % len(self.stretch_frames)
+                self.stretch_frame_index += 1
+                if self.stretch_frame_index >= len(self.stretch_seq):
+                    self.stretch_frame_index = 0
+                    self.behavior.end_stretch()
 
         if self.show_heart:
             self.heart_timer -= 1
@@ -167,7 +175,7 @@ class PetWidget(QWidget):
             pixmap = self.walk_frames[self.walk_frame_index]
             cache_key = ("walk", self.walk_frame_index, flip)
         else:
-            pixmap = self.stretch_frames[self.stretch_frame_index]
+            pixmap = self.stretch_seq[self.stretch_frame_index]
             cache_key = ("stretch", self.stretch_frame_index, flip)
 
         if flip:
@@ -223,16 +231,21 @@ class PetWidget(QWidget):
             self.setCursor(QCursor(Qt.CursorShape.ArrowCursor))
             release_pos = event.globalPosition().toPoint()
             if self.click_pos and (release_pos - self.click_pos).manhattanLength() < 5:
-                self.behavior.trigger_happy()
-                self.show_heart = True
-                self.heart_timer = 25
+                self._trigger_stretch()
             self.dragging = False
+
+    def _trigger_stretch(self):
+        self.behavior.trigger_stretch()
+        self.stretch_frame_index = 0
+        self.stretch_frame_counter = 0
+        self.show_heart = True
+        self.heart_timer = 25
 
     def _show_context_menu(self, pos):
         menu = QMenu(self)
 
         pet_action = QAction("Pet Oreo", self)
-        pet_action.triggered.connect(self._pet_oreo)
+        pet_action.triggered.connect(self._trigger_stretch)
         menu.addAction(pet_action)
 
         menu.addSeparator()
@@ -242,8 +255,3 @@ class PetWidget(QWidget):
         menu.addAction(quit_action)
 
         menu.exec(pos)
-
-    def _pet_oreo(self):
-        self.behavior.trigger_happy()
-        self.show_heart = True
-        self.heart_timer = 25
