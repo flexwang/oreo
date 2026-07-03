@@ -15,11 +15,14 @@ if getattr(sys, "_MEIPASS", None):
 else:
     FRAMES_DIR = os.path.join(os.path.dirname(__file__), "frames")
 
-FRAMES_WALK_DIR = os.path.join(FRAMES_DIR, "walking")
-WALK_FRAMES_SEQ = [5, 6]
+FRAMES_WALK_DIR = os.path.join(FRAMES_DIR, "walking3")
+FRAMES_STRETCH_DIR = os.path.join(FRAMES_DIR, "stretching")
+WALK_FRAMES_SEQ = [1, 2, 3, 4]
+STRETCH_FRAMES_SEQ = [1, 2, 3, 4]
 
 PET_SIZE = 150
 WALK_ANIM_SPEED = 8
+STRETCH_ANIM_SPEED = 12
 
 
 def _pil_to_qpixmap(img):
@@ -45,6 +48,8 @@ class PetWidget(QWidget):
         self.float_y = float(self.y())
         self.walk_frame_index = 0
         self.walk_frame_counter = 0
+        self.stretch_frame_index = 0
+        self.stretch_frame_counter = 0
         self._flipped_cache = {}
 
     def _setup_window(self):
@@ -65,14 +70,25 @@ class PetWidget(QWidget):
         self.move(start_x, start_y)
 
     def _load_frames(self):
-        """Load walking frames."""
+        """Load walking and stretching frames at Retina resolution."""
+        dpr = QApplication.primaryScreen().devicePixelRatio()
+        load_size = int(PET_SIZE * dpr)
         self.walk_frames = []
         for i in WALK_FRAMES_SEQ:
             path = os.path.join(FRAMES_WALK_DIR, f"frame_{i}.png")
             img = Image.open(path).convert("RGBA")
-            img.thumbnail((PET_SIZE, PET_SIZE), Image.LANCZOS)
+            img.thumbnail((load_size, load_size), Image.LANCZOS)
             pixmap = _pil_to_qpixmap(img)
+            pixmap.setDevicePixelRatio(dpr)
             self.walk_frames.append(pixmap)
+        self.stretch_frames = []
+        for i in STRETCH_FRAMES_SEQ:
+            path = os.path.join(FRAMES_STRETCH_DIR, f"frame_{i}.png")
+            img = Image.open(path).convert("RGBA")
+            img.thumbnail((load_size, load_size), Image.LANCZOS)
+            pixmap = _pil_to_qpixmap(img)
+            pixmap.setDevicePixelRatio(dpr)
+            self.stretch_frames.append(pixmap)
 
     def _setup_behavior(self):
         self.behavior = FloatingBehavior(self.screen_width, self.screen_height, PET_SIZE)
@@ -127,11 +143,17 @@ class PetWidget(QWidget):
 
         self.move(int(self.float_x), int(self.float_y))
 
-        # Always cycle through walk frames
-        self.walk_frame_counter += 1
-        if self.walk_frame_counter >= WALK_ANIM_SPEED:
-            self.walk_frame_counter = 0
-            self.walk_frame_index = (self.walk_frame_index + 1) % len(self.walk_frames)
+        # Animate based on state
+        if self.behavior.state == State.WALK:
+            self.walk_frame_counter += 1
+            if self.walk_frame_counter >= WALK_ANIM_SPEED:
+                self.walk_frame_counter = 0
+                self.walk_frame_index = (self.walk_frame_index + 1) % len(self.walk_frames)
+        else:
+            self.stretch_frame_counter += 1
+            if self.stretch_frame_counter >= STRETCH_ANIM_SPEED:
+                self.stretch_frame_counter = 0
+                self.stretch_frame_index = (self.stretch_frame_index + 1) % len(self.stretch_frames)
 
         if self.show_heart:
             self.heart_timer -= 1
@@ -141,13 +163,17 @@ class PetWidget(QWidget):
         self.update()
 
     def _get_current_pixmap(self, flip=False):
-        pixmap = self.walk_frames[self.walk_frame_index]
+        if self.behavior.state == State.WALK:
+            pixmap = self.walk_frames[self.walk_frame_index]
+            cache_key = ("walk", self.walk_frame_index, flip)
+        else:
+            pixmap = self.stretch_frames[self.stretch_frame_index]
+            cache_key = ("stretch", self.stretch_frame_index, flip)
 
         if flip:
-            key = (self.walk_frame_index, True)
-            if key not in self._flipped_cache:
-                self._flipped_cache[key] = pixmap.transformed(QTransform().scale(-1, 1))
-            return self._flipped_cache[key]
+            if cache_key not in self._flipped_cache:
+                self._flipped_cache[cache_key] = pixmap.transformed(QTransform().scale(-1, 1))
+            return self._flipped_cache[cache_key]
         return pixmap
 
     def paintEvent(self, event):
@@ -157,9 +183,12 @@ class PetWidget(QWidget):
         flip = self.behavior.direction < 0
         pixmap = self._get_current_pixmap(flip=flip)
 
-        x = (PET_SIZE - pixmap.width()) // 2
-        y = (PET_SIZE - pixmap.height()) // 2
-        painter.drawPixmap(x, y, pixmap)
+        dpr = pixmap.devicePixelRatio()
+        logical_w = int(pixmap.width() / dpr)
+        logical_h = int(pixmap.height() / dpr)
+        x = (PET_SIZE - logical_w) // 2
+        y = (PET_SIZE - logical_h) // 2
+        painter.drawPixmap(x, y, logical_w, logical_h, pixmap)
 
         if self.show_heart:
             self._draw_heart(painter)
