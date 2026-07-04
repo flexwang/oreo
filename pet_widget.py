@@ -16,7 +16,7 @@ else:
     RESOURCE_DIR = os.path.dirname(__file__)
 
 FRAMES_DIR = os.path.join(RESOURCE_DIR, "frames")
-FRAMES_WALK_DIR = os.path.join(FRAMES_DIR, "walking3")
+FRAMES_WALK_DIR = os.path.join(FRAMES_DIR, "walking")
 FRAMES_TRANSITION_DIR = os.path.join(FRAMES_DIR, "walking-to-stretching")
 FRAMES_STRETCH_DIR = os.path.join(FRAMES_DIR, "stretching")
 STRETCH_SOUND_PATH = os.path.join(RESOURCE_DIR, "audio", "stretch.wav")
@@ -92,7 +92,7 @@ class PetWidget(QWidget):
         # Stretch sequence: transition frame 2, 3 then stretch frame 1, 2
         padded_size = int(load_size * 0.85)
         self.stretch_seq = []
-        for i in [2, 3]:
+        for i in [1, 2]:
             path = os.path.join(FRAMES_TRANSITION_DIR, f"frame_{i}.png")
             img = Image.open(path).convert("RGBA")
             img.thumbnail((padded_size, padded_size), Image.LANCZOS)
