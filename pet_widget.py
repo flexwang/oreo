@@ -22,7 +22,10 @@ FRAMES_TRANSITION_DIR = os.path.join(FRAMES_DIR, "walking-to-stretching")
 FRAMES_STRETCH_DIR = os.path.join(FRAMES_DIR, "stretching")
 STRETCH_SOUND_PATH = os.path.join(RESOURCE_DIR, "audio", "stretch.wav")
 
-PET_SIZE = 150
+DEFAULT_PET_SIZE = 150
+ZOOM_STEP = 30
+MIN_PET_SIZE = 60
+MAX_PET_SIZE = 400
 WALK_ANIM_SPEED = 8
 STRETCH_ANIM_SPEED = 3
 
@@ -38,6 +41,7 @@ class PetWidget(QWidget):
     def __init__(self, sound_enabled=False):
         super().__init__()
         self.sound_enabled = sound_enabled
+        self.pet_size = DEFAULT_PET_SIZE
         self._setup_window()
         self._load_frames()
         self._load_sounds()
@@ -67,20 +71,20 @@ class PetWidget(QWidget):
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_MacAlwaysShowToolWindow)
-        self.setFixedSize(PET_SIZE, PET_SIZE)
+        self.setFixedSize(self.pet_size, self.pet_size)
 
         screen = QApplication.primaryScreen().geometry()
         self.screen_width = screen.width()
         self.screen_height = screen.height()
 
-        start_x = self.screen_width // 2 - PET_SIZE // 2
+        start_x = self.screen_width // 2 - self.pet_size // 2
         start_y = self.screen_height // 2 + 50
         self.move(start_x, start_y)
 
     def _load_frames(self):
         """Load walking, transition, and stretching frames at Retina resolution."""
         dpr = QApplication.primaryScreen().devicePixelRatio()
-        load_size = int(PET_SIZE * dpr)
+        load_size = int(self.pet_size * dpr)
 
         self.walk_frames = []
         for i in [1, 2, 3, 4]:
@@ -127,7 +131,7 @@ class PetWidget(QWidget):
         self.stretch_sound.setVolume(0.01)
 
     def _setup_behavior(self):
-        self.behavior = FloatingBehavior(self.screen_width, self.screen_height, PET_SIZE)
+        self.behavior = FloatingBehavior(self.screen_width, self.screen_height, self.pet_size)
 
     def _setup_animation(self):
         self.timer = QTimer(self)
@@ -169,8 +173,8 @@ class PetWidget(QWidget):
         self.float_x += dx
         self.float_y += dy
 
-        self.float_x = max(0, min(self.float_x, self.screen_width - PET_SIZE))
-        self.float_y = max(0, min(self.float_y, self.screen_height - PET_SIZE))
+        self.float_x = max(0, min(self.float_x, self.screen_width - self.pet_size))
+        self.float_y = max(0, min(self.float_y, self.screen_height - self.pet_size))
 
         self.move(int(self.float_x), int(self.float_y))
 
@@ -226,8 +230,8 @@ class PetWidget(QWidget):
         dpr = pixmap.devicePixelRatio()
         logical_w = int(pixmap.width() / dpr)
         logical_h = int(pixmap.height() / dpr)
-        x = (PET_SIZE - logical_w) // 2
-        y = (PET_SIZE - logical_h) // 2
+        x = (self.pet_size - logical_w) // 2
+        y = (self.pet_size - logical_h) // 2
         painter.drawPixmap(x, y, logical_w, logical_h, pixmap)
 
         if self.show_heart:
@@ -240,7 +244,7 @@ class PetWidget(QWidget):
         painter.setBrush(QColor(255, 80, 80, 200))
         font = QFont("Arial", 20)
         painter.setFont(font)
-        painter.drawText(QRectF(PET_SIZE - 40, 0, 40, 40), Qt.AlignmentFlag.AlignCenter, "❤")
+        painter.drawText(QRectF(self.pet_size - 40, 0, 40, 40), Qt.AlignmentFlag.AlignCenter, "❤")
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
@@ -290,8 +294,33 @@ class PetWidget(QWidget):
 
         menu.addSeparator()
 
+        zoom_in_action = QAction("Zoom In +", self)
+        zoom_in_action.triggered.connect(self._zoom_in)
+        menu.addAction(zoom_in_action)
+
+        zoom_out_action = QAction("Zoom Out -", self)
+        zoom_out_action.triggered.connect(self._zoom_out)
+        menu.addAction(zoom_out_action)
+
+        menu.addSeparator()
+
         quit_action = QAction("Quit", self)
         quit_action.triggered.connect(QApplication.quit)
         menu.addAction(quit_action)
 
         menu.exec(pos)
+
+    def _zoom_in(self):
+        self.pet_size = min(self.pet_size + ZOOM_STEP, MAX_PET_SIZE)
+        self._apply_zoom()
+
+    def _zoom_out(self):
+        self.pet_size = max(self.pet_size - ZOOM_STEP, MIN_PET_SIZE)
+        self._apply_zoom()
+
+    def _apply_zoom(self):
+        self.setFixedSize(self.pet_size, self.pet_size)
+        self._flipped_cache.clear()
+        self._load_frames()
+        self.behavior.pet_size = self.pet_size
+        self.update()
