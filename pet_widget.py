@@ -1,5 +1,6 @@
 """Main pet widget — transparent floating window displaying Oreo's sprite sheet."""
 
+import json
 import os
 import sys
 from PIL import Image
@@ -29,6 +30,9 @@ MAX_PET_SIZE = 500
 WALK_ANIM_SPEED = 8
 STRETCH_ANIM_SPEED = 3
 
+CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".oreo")
+CONFIG_PATH = os.path.join(CONFIG_DIR, "config.json")
+
 
 def _pil_to_qpixmap(img):
     """Convert a PIL RGBA image to QPixmap."""
@@ -41,7 +45,7 @@ class PetWidget(QWidget):
     def __init__(self, sound_enabled=False):
         super().__init__()
         self.sound_enabled = sound_enabled
-        self.pet_size = DEFAULT_PET_SIZE
+        self.pet_size = self._load_config()
         self._setup_window()
         self._load_frames()
         self._load_sounds()
@@ -331,4 +335,19 @@ class PetWidget(QWidget):
         self._flipped_cache.clear()
         self._load_frames()
         self.behavior.pet_size = self.pet_size
+        self._save_config()
         self.update()
+
+    def _load_config(self):
+        try:
+            with open(CONFIG_PATH) as f:
+                data = json.load(f)
+            size = data.get("pet_size", DEFAULT_PET_SIZE)
+            return max(MIN_PET_SIZE, min(size, MAX_PET_SIZE))
+        except (FileNotFoundError, json.JSONDecodeError, KeyError):
+            return DEFAULT_PET_SIZE
+
+    def _save_config(self):
+        os.makedirs(CONFIG_DIR, exist_ok=True)
+        with open(CONFIG_PATH, "w") as f:
+            json.dump({"pet_size": self.pet_size}, f)
