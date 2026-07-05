@@ -24,8 +24,8 @@ STRETCH_SOUND_PATH = os.path.join(RESOURCE_DIR, "audio", "stretch.wav")
 
 DEFAULT_PET_SIZE = 150
 ZOOM_STEP = 30
-MIN_PET_SIZE = 60
-MAX_PET_SIZE = 400
+MIN_PET_SIZE = 30
+MAX_PET_SIZE = 500
 WALK_ANIM_SPEED = 8
 STRETCH_ANIM_SPEED = 3
 
@@ -302,6 +302,10 @@ class PetWidget(QWidget):
         zoom_out_action.triggered.connect(self._zoom_out)
         menu.addAction(zoom_out_action)
 
+        reset_action = QAction("Reset", self)
+        reset_action.triggered.connect(self._zoom_reset)
+        menu.addAction(reset_action)
+
         menu.addSeparator()
 
         quit_action = QAction("Quit", self)
@@ -316,6 +320,10 @@ class PetWidget(QWidget):
 
     def _zoom_out(self):
         self.pet_size = max(self.pet_size - ZOOM_STEP, MIN_PET_SIZE)
+        self._apply_zoom()
+
+    def _zoom_reset(self):
+        self.pet_size = DEFAULT_PET_SIZE
         self._apply_zoom()
 
     def _apply_zoom(self):
