@@ -24,7 +24,7 @@ STRETCH_SOUND_PATH = os.path.join(RESOURCE_DIR, "audio", "stretch.wav")
 
 PET_SIZE = 150
 WALK_ANIM_SPEED = 8
-STRETCH_ANIM_SPEED = 4
+STRETCH_ANIM_SPEED = 3
 
 
 def _pil_to_qpixmap(img):
@@ -101,7 +101,7 @@ class PetWidget(QWidget):
             pixmap.setDevicePixelRatio(dpr)
             self.walk_tail_up_frames.append(pixmap)
 
-        # Stretch sequence: transition frame 2, 3 then stretch frame 1, 2
+        # Stretch sequence: transition frames then stretch frames 1-4
         padded_size = int(load_size * 0.85)
         self.stretch_seq = []
         for i in [1, 2]:
@@ -111,7 +111,7 @@ class PetWidget(QWidget):
             pixmap = _pil_to_qpixmap(img)
             pixmap.setDevicePixelRatio(dpr)
             self.stretch_seq.append(pixmap)
-        for i in [1, 2, 2, 2]:
+        for i in [1, 2, 3, 3]:
             path = os.path.join(FRAMES_STRETCH_DIR, f"frame_{i}.png")
             img = Image.open(path).convert("RGBA")
             img.thumbnail((padded_size, padded_size), Image.LANCZOS)
