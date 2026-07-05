@@ -17,6 +17,7 @@ else:
 
 FRAMES_DIR = os.path.join(RESOURCE_DIR, "frames")
 FRAMES_WALK_DIR = os.path.join(FRAMES_DIR, "walking")
+FRAMES_WALK_TAIL_UP_DIR = os.path.join(FRAMES_DIR, "walking-tail-up")
 FRAMES_TRANSITION_DIR = os.path.join(FRAMES_DIR, "walking-to-stretching")
 FRAMES_STRETCH_DIR = os.path.join(FRAMES_DIR, "stretching")
 STRETCH_SOUND_PATH = os.path.join(RESOURCE_DIR, "audio", "stretch.wav")
@@ -51,6 +52,8 @@ class PetWidget(QWidget):
         self.float_y = float(self.y())
         self.walk_frame_index = 0
         self.walk_frame_counter = 0
+        self.walk_tail_up_frame_index = 0
+        self.walk_tail_up_frame_counter = 0
         self.stretch_frame_index = 0
         self.stretch_frame_counter = 0
         self._flipped_cache = {}
@@ -88,6 +91,15 @@ class PetWidget(QWidget):
             pixmap = _pil_to_qpixmap(img)
             pixmap.setDevicePixelRatio(dpr)
             self.walk_frames.append(pixmap)
+
+        self.walk_tail_up_frames = []
+        for i in [1, 2, 3, 4]:
+            path = os.path.join(FRAMES_WALK_TAIL_UP_DIR, f"frame_{i}.png")
+            img = Image.open(path).convert("RGBA")
+            img.thumbnail((load_size, load_size), Image.LANCZOS)
+            pixmap = _pil_to_qpixmap(img)
+            pixmap.setDevicePixelRatio(dpr)
+            self.walk_tail_up_frames.append(pixmap)
 
         # Stretch sequence: transition frame 2, 3 then stretch frame 1, 2
         padded_size = int(load_size * 0.85)
@@ -168,6 +180,11 @@ class PetWidget(QWidget):
             if self.walk_frame_counter >= WALK_ANIM_SPEED:
                 self.walk_frame_counter = 0
                 self.walk_frame_index = (self.walk_frame_index + 1) % len(self.walk_frames)
+        elif self.behavior.state == State.WALK_TAIL_UP:
+            self.walk_tail_up_frame_counter += 1
+            if self.walk_tail_up_frame_counter >= WALK_ANIM_SPEED:
+                self.walk_tail_up_frame_counter = 0
+                self.walk_tail_up_frame_index = (self.walk_tail_up_frame_index + 1) % len(self.walk_tail_up_frames)
         else:
             self.stretch_frame_counter += 1
             if self.stretch_frame_counter >= STRETCH_ANIM_SPEED:
@@ -188,6 +205,9 @@ class PetWidget(QWidget):
         if self.behavior.state == State.WALK:
             pixmap = self.walk_frames[self.walk_frame_index]
             cache_key = ("walk", self.walk_frame_index, flip)
+        elif self.behavior.state == State.WALK_TAIL_UP:
+            pixmap = self.walk_tail_up_frames[self.walk_tail_up_frame_index]
+            cache_key = ("walk_tail_up", self.walk_tail_up_frame_index, flip)
         else:
             pixmap = self.stretch_seq[self.stretch_frame_index]
             cache_key = ("stretch", self.stretch_frame_index, flip)
@@ -252,6 +272,8 @@ class PetWidget(QWidget):
         self.behavior.trigger_stretch()
         self.stretch_frame_index = 0
         self.stretch_frame_counter = 0
+        self.walk_tail_up_frame_index = 0
+        self.walk_tail_up_frame_counter = 0
         self.show_heart = True
         self.heart_timer = 25
         if self.stretch_sound is not None:
