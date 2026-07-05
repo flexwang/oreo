@@ -58,7 +58,6 @@ class PetWidget(QWidget):
         self.stretch_frame_counter = 0
         self._flipped_cache = {}
         self.show_heart = False
-        self.heart_timer = 0
 
     def _setup_window(self):
         self.setWindowFlags(
@@ -195,8 +194,7 @@ class PetWidget(QWidget):
                     self.behavior.end_stretch()
 
         if self.show_heart:
-            self.heart_timer -= 1
-            if self.heart_timer <= 0:
+            if self.behavior.state == State.WALK:
                 self.show_heart = False
 
         self.update()
@@ -275,7 +273,6 @@ class PetWidget(QWidget):
         self.walk_tail_up_frame_index = 0
         self.walk_tail_up_frame_counter = 0
         self.show_heart = True
-        self.heart_timer = 25
         if self.stretch_sound is not None:
             self.stretch_sound.play()
 
