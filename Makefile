@@ -3,9 +3,6 @@ PYTHON := $(VENV)/bin/python
 PIP := $(VENV)/bin/pip
 
 all: $(VENV)
-	$(PYTHON) main.py --meow
-
-quiet: $(VENV)
 	$(PYTHON) main.py
 
 $(VENV): requirements.txt
@@ -16,4 +13,4 @@ $(VENV): requirements.txt
 clean:
 	rm -rf $(VENV)
 
-.PHONY: all quiet clean
+.PHONY: all clean

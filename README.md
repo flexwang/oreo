@@ -5,8 +5,7 @@ A floating desktop cat companion. Oreo walks back and forth across your screen a
 ## Run
 
 ```bash
-make          # with meow sound when Oreo stretches
-make quiet    # silent
+make
 ```
 
 This creates a virtual environment, installs dependencies, and starts the app.
@@ -18,6 +17,8 @@ Right-click for more options:
 - **Pet Oreo** — trigger a stretch
 - **Zoom In +** / **Zoom Out -** — resize Oreo (remembered across launches)
 - **Reset** — restore default size
+- **Volume Up +** / **Volume Down -** — adjust meow volume (remembered across launches)
+- **Silence** — mute the meow sound
 - **Quit** — exit the app
 
 ## Run in background with tmux

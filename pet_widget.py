@@ -27,6 +27,11 @@ DEFAULT_PET_SIZE = 150
 ZOOM_STEP = 30
 MIN_PET_SIZE = 30
 MAX_PET_SIZE = 500
+
+DEFAULT_VOLUME = 0.1
+VOLUME_STEP = 0.05
+MIN_VOLUME = 0.0
+MAX_VOLUME = 0.5
 WALK_ANIM_SPEED = 8
 STRETCH_ANIM_SPEED = 3
 
@@ -42,10 +47,9 @@ def _pil_to_qpixmap(img):
 
 
 class PetWidget(QWidget):
-    def __init__(self, sound_enabled=False):
+    def __init__(self):
         super().__init__()
-        self.sound_enabled = sound_enabled
-        self.pet_size = self._load_config()
+        self.pet_size, self.volume = self._load_config()
         self._setup_window()
         self._load_frames()
         self._load_sounds()
@@ -127,12 +131,9 @@ class PetWidget(QWidget):
             self.stretch_seq.append(pixmap)
 
     def _load_sounds(self):
-        if not self.sound_enabled:
-            self.stretch_sound = None
-            return
         self.stretch_sound = QSoundEffect(self)
         self.stretch_sound.setSource(QUrl.fromLocalFile(STRETCH_SOUND_PATH))
-        self.stretch_sound.setVolume(0.01)
+        self.stretch_sound.setVolume(self.volume)
 
     def _setup_behavior(self):
         self.behavior = FloatingBehavior(self.screen_width, self.screen_height, self.pet_size)
@@ -281,8 +282,7 @@ class PetWidget(QWidget):
         self.walk_tail_up_frame_index = 0
         self.walk_tail_up_frame_counter = 0
         self.show_heart = True
-        if self.stretch_sound is not None:
-            self.stretch_sound.play()
+        self.stretch_sound.play()
 
     def changeEvent(self, event):
         if event.type() == event.Type.ActivationChange and not self.isActiveWindow():
@@ -309,6 +309,20 @@ class PetWidget(QWidget):
         reset_action = QAction("Reset", self)
         reset_action.triggered.connect(self._zoom_reset)
         menu.addAction(reset_action)
+
+        menu.addSeparator()
+
+        volume_up_action = QAction("Volume Up +", self)
+        volume_up_action.triggered.connect(self._volume_up)
+        menu.addAction(volume_up_action)
+
+        volume_down_action = QAction("Volume Down -", self)
+        volume_down_action.triggered.connect(self._volume_down)
+        menu.addAction(volume_down_action)
+
+        silence_action = QAction("Silence", self)
+        silence_action.triggered.connect(self._volume_silence)
+        menu.addAction(silence_action)
 
         menu.addSeparator()
 
@@ -343,11 +357,36 @@ class PetWidget(QWidget):
             with open(CONFIG_PATH) as f:
                 data = json.load(f)
             size = data.get("pet_size", DEFAULT_PET_SIZE)
-            return max(MIN_PET_SIZE, min(size, MAX_PET_SIZE))
+            volume = data.get("volume", DEFAULT_VOLUME)
+            return (
+                max(MIN_PET_SIZE, min(size, MAX_PET_SIZE)),
+                max(MIN_VOLUME, min(volume, MAX_VOLUME)),
+            )
         except (FileNotFoundError, json.JSONDecodeError, KeyError):
-            return DEFAULT_PET_SIZE
+            return DEFAULT_PET_SIZE, DEFAULT_VOLUME
 
     def _save_config(self):
         os.makedirs(CONFIG_DIR, exist_ok=True)
         with open(CONFIG_PATH, "w") as f:
-            json.dump({"pet_size": self.pet_size}, f)
+            json.dump({"pet_size": self.pet_size, "volume": self.volume}, f)
+
+    def _volume_up(self):
+        self.volume = min(self.volume + VOLUME_STEP, MAX_VOLUME)
+        self._apply_volume()
+        self._play_sound()
+
+    def _volume_down(self):
+        self.volume = max(self.volume - VOLUME_STEP, MIN_VOLUME)
+        self._apply_volume()
+        self._play_sound()
+
+    def _volume_silence(self):
+        self.volume = MIN_VOLUME
+        self._apply_volume()
+
+    def _apply_volume(self):
+        self.stretch_sound.setVolume(self.volume)
+        self._save_config()
+
+    def _play_sound(self):
+        self.stretch_sound.play()
