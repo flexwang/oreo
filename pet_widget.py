@@ -74,7 +74,7 @@ class PetWidget(QWidget):
         self.screen_height = screen.height()
 
         start_x = self.screen_width // 2 - PET_SIZE // 2
-        start_y = self.screen_height - PET_SIZE - 50
+        start_y = self.screen_height // 2 + 50
         self.move(start_x, start_y)
 
     def _load_frames(self):
