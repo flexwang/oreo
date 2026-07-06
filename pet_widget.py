@@ -82,11 +82,13 @@ class PetWidget(QWidget):
         self.setFixedSize(self.pet_size, self.pet_size)
 
         screen = QApplication.primaryScreen().geometry()
+        self.screen_left = screen.x()
+        self.screen_top = screen.y()
         self.screen_width = screen.width()
         self.screen_height = screen.height()
 
-        start_x = self.screen_width // 2 - self.pet_size // 2
-        start_y = self.screen_height // 2 + 50
+        start_x = self.screen_left + self.screen_width // 2 - self.pet_size // 2
+        start_y = self.screen_top + self.screen_height // 2 + 50
         self.move(start_x, start_y)
 
     def _load_frames(self):
@@ -174,12 +176,14 @@ class PetWidget(QWidget):
         if self.dragging:
             return
 
-        dx, dy = self.behavior.update(self.float_x, self.float_y)
+        local_x = self.float_x - self.screen_left
+        local_y = self.float_y - self.screen_top
+        dx, dy = self.behavior.update(local_x, local_y)
         self.float_x += dx
         self.float_y += dy
 
-        self.float_x = max(0, min(self.float_x, self.screen_width - self.pet_size))
-        self.float_y = max(0, min(self.float_y, self.screen_height - self.pet_size))
+        self.float_x = max(self.screen_left, min(self.float_x, self.screen_left + self.screen_width - self.pet_size))
+        self.float_y = max(self.screen_top, min(self.float_y, self.screen_top + self.screen_height - self.pet_size))
 
         self.move(int(self.float_x), int(self.float_y))
 
@@ -274,6 +278,19 @@ class PetWidget(QWidget):
             if self.click_pos and (release_pos - self.click_pos).manhattanLength() < 5:
                 self._trigger_stretch()
             self.dragging = False
+            self._update_screen_bounds()
+
+    def _update_screen_bounds(self):
+        screen = QApplication.screenAt(self.geometry().center())
+        if screen is None:
+            screen = QApplication.primaryScreen()
+        geom = screen.geometry()
+        self.screen_left = geom.x()
+        self.screen_top = geom.y()
+        self.screen_width = geom.width()
+        self.screen_height = geom.height()
+        self.behavior.screen_width = geom.width()
+        self.behavior.screen_height = geom.height()
 
     def _trigger_stretch(self):
         self.behavior.trigger_stretch()
