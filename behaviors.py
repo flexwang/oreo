@@ -20,14 +20,14 @@ class FloatingBehavior:
         self.direction = random.choice([-1, 1])
         self.speed = random.uniform(1.0, 2.0)
 
-        self.walk_timer = 0
-        self.walk_duration = self._random_walk_duration()
+        self.walk_distance = 0
+        self.walk_target = self._random_walk_target()
 
         self.tail_up_timer = 0
         self.tail_up_duration = 0
 
-    def _random_walk_duration(self):
-        return random.randint(300, 800)
+    def _random_walk_target(self):
+        return random.uniform(0.4, 1.0) * self.screen_width
 
     def _random_tail_up_duration(self):
         return random.randint(60, 120)
@@ -35,10 +35,10 @@ class FloatingBehavior:
     def update(self, current_x, current_y):
         """Returns (dx, dy) for this tick."""
         if self.state == State.WALK:
-            self.walk_timer += 1
-            if self.walk_timer >= self.walk_duration:
-                self.walk_timer = 0
-                self.walk_duration = self._random_walk_duration()
+            self.walk_distance += abs(self.speed)
+            if self.walk_distance >= self.walk_target:
+                self.walk_distance = 0
+                self.walk_target = self._random_walk_target()
                 self.direction *= -1
                 self.speed = random.uniform(1.0, 2.0)
 
@@ -47,8 +47,8 @@ class FloatingBehavior:
             self.tail_up_timer += 1
             if self.tail_up_timer >= self.tail_up_duration:
                 self.state = State.WALK
-                self.walk_timer = 0
-                self.walk_duration = self._random_walk_duration()
+                self.walk_distance = 0
+                self.walk_target = self._random_walk_target()
 
             dx = self.direction * self.speed
         else:
