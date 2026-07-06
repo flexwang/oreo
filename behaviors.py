@@ -27,7 +27,7 @@ class FloatingBehavior:
         self.tail_up_duration = 0
 
     def _random_walk_duration(self):
-        return random.randint(80, 200)
+        return random.randint(300, 800)
 
     def _random_tail_up_duration(self):
         return random.randint(60, 120)
